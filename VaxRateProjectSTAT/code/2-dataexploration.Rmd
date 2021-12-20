@@ -1,0 +1,81 @@
+---
+title: "Final Project Data Exploration"
+author: "Jenna Bao"
+date: "12/18/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+options(scipen = 0, digits = 3)  # controls number of significant digits printed
+```
+
+```{r, message = FALSE}
+library(tidyverse)  
+library(glmnetUtils)    
+library(kableExtra)
+library(cowplot) 
+library(corrplot)
+library(Hmisc)
+```
+
+# Data Exploration
+## Response Distribution
+
+```{r}
+#Read in data
+vax_data = read_csv("stat-471-fall-2021/data/vaxdata.csv")
+vax_train = read_csv("stat-471-fall-2021/data/data_trainwithcitycounty.csv")
+```
+
+
+```{r}
+#Calculate median
+median_vax_rate = vax_train %>% summarise(median(Series_Complete_18PlusPop_Pct)) %>% pull ()
+median_vax_rate
+```
+
+```{r vax-rate-distribution, fig.cap = "This is a histogram of the frequencies of vaccination rates in 18+ populations across counties.", fig.width = 4, fig.height = 2, fig.align = "center", fig.pos = "H", message = FALSE}
+#Histogram of vaccination rates
+vax_train %>% 
+  ggplot(aes(x = Series_Complete_18PlusPop_Pct)) +
+  geom_histogram() +
+  geom_vline(xintercept = median_vax_rate,
+             linetype = "dashed") +
+  labs(x = "Vaccination Rate of 18+ Populations (as a decimal)",
+       y = "Count", title = "Frequencies of Vaccination Rates Across U.S. Counties") +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+```{r}
+#Top 10 Counties With Highest Vaccination Rates
+vax_train %>%
+  select(Recip_County, Recip_State, Series_Complete_18PlusPop_Pct) %>%
+  arrange(desc(Series_Complete_18PlusPop_Pct)) %>%
+  head(10) %>%
+  kable(format = "latex", row.names = NA,
+        booktabs = TRUE, digits = 2,
+        col.names = c("County", "State", "Vaccination Rate"),
+        caption = "Top ten counties by vaccination rate
+        (expressed as a decimal).") %>%
+  kable_styling(position = "center")
+```
+
+```{r}
+#Take out characters for overall examination
+vax_train <- vax_train %>% select(-c(SVI_CTGY, FIPS, Recip_State, Recip_County, Series_Complete_18PlusPop_Pct))
+
+#Take out all other variables not in Socio-Economic bracket or Political Affiliation bracket
+vax_train <- vax_train %>% select(-c(per_18andyounger, per_65andover, per_BIPOC, per_rural, primarycarephysicians_ratio, per_flushotvaccine, per_uninsured, life_expectancy))
+```
+
+```{r corr-plot, fig.width = 0.5, fig.height = 10, fig.align = "center", fig.pos = "H", message = FALSE}}
+#Run twice, one first for overall and one after removing other variables for specific examination
+res <- cor(vax_train)
+cor(vax_train, use = "complete.obs")
+res2 <- rcorr(as.matrix(vax_train))
+res2
+corrplot(res, type = "upper", order = "hclust", 
+         tl.col = "black", tl.srt = 45, tl.cex = 0.6)
+```
+
+
